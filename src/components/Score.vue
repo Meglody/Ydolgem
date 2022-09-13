@@ -17,6 +17,9 @@ const props = withDefaults(
     tracks: () => [],
   }
 );
+const each = computed(() =>
+  sum(props.tracks.map((track) => track.notes.length))
+);
 const addScore = (judge) => {
   const base = 1000000000 / each.value;
   const { MISS, GOOD, PERFECT, MASTER } = DudgeLine;
@@ -39,9 +42,7 @@ const addScore = (judge) => {
 };
 const add = (a, b) => a + b;
 const sum = (arr) => arr.reduce(add, 0);
-const each = computed(() => {
-  return sum(props.tracks.map((track) => track.notes.length));
-});
+
 expose({
   addScore,
   add,

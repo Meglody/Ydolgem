@@ -1,7 +1,7 @@
 <script lang="ts" setup></script>
 
 <template>
-  <div w-full h-full bg="#000" max-w-screen-md mx-auto>
+  <div w-full h-full bg="#fff" max-w-screen-md mx-auto>
     <slot />
   </div>
 </template>

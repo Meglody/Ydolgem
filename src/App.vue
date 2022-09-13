@@ -11,7 +11,7 @@ const addScore = (judgeResult) => {
 </script>
 
 <template>
-  <Score ref="scoreRef" absolute z-20 left="0px" />
+  <Score ref="scoreRef" :tracks="tracks" absolute z-20 left="0px" />
   <PlayGround flex flex-row overflow-hidden gap="0px 3px">
     <Track
       v-for="trackInfo in tracks"

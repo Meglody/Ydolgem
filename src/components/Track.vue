@@ -64,6 +64,7 @@ const topAdd = computed(() => {
     return (trackHeight.value - note.initialTop) * note.speed;
   });
 });
+const hitNote = ref(null);
 const push = () => {
   const notesToPush = allNotes.filter((note) => {
     const timeLine =
@@ -84,6 +85,33 @@ const move = () => {
     note.top = note.top + topAdd.value[index];
   });
 };
+const misses = ref(0);
+const checkJudges = () => {
+  bg.value = props.trackInfo.bg;
+  // 执行判读
+  if (hitNote.value) {
+    const result = judgeByFrame(hitNote.value.frame);
+    logAndChangeBg(result);
+    emit('addScore', result);
+    hitNote.value = null;
+  }
+  // 是否miss
+  const outOfScreen = allNotes.filter((note) => {
+    return (
+      note.top >= trackHeight.value &&
+      !triggeredNotesKey.value.includes(note.key)
+    );
+  });
+  misses.value = outOfScreen.length;
+  return outOfScreen;
+};
+watch(misses, (nv, ov) => {
+  // miss数增加
+  if (nv) {
+    logAndChangeBg(0);
+    emit('addScore', 0);
+  }
+});
 const ifEnd = () => {
   const time = new Date().getTime();
   if (time >= endTime) {
@@ -91,7 +119,7 @@ const ifEnd = () => {
   }
   return false;
 };
-const render = pipe(push, move, ifEnd);
+const render = pipe(checkJudges, push, move, ifEnd);
 
 const userInput = () => {
   let topest = null;
@@ -106,11 +134,7 @@ const userInput = () => {
   }
 };
 
-// const calculateHitTime = (note) => {
-//   return note.startTimeStamp + offset.value + startTimeStamp + 1 / note.speed;
-// };
-
-const judge = (result) => {
+const logAndChangeBg = async (result) => {
   const { MISS, GOOD, PERFECT, MASTER } = DudgeLine;
   bg.value = colors[result];
   switch (result) {
@@ -127,26 +151,20 @@ const judge = (result) => {
       console.log('master');
       break;
   }
+  return true;
 };
 
 const ZSwitch = ref(false);
 
 const pressDown = (e) => {
-  console.log(e.keyCode);
   if (e.keyCode !== props.trackInfo.keyCode) return;
-  const hitNote = userInput();
-  // const shouldHitTime = calculateHitTime(hitNote);
-  // const keyDownTime = new Date().getTime();
-  // console.log(shouldHitTime, keyDownTime);
-  const result = judgeByFrame(hitNote.frame);
-  const judgeResult = judge(result);
-  emit('addScore', judgeResult);
+  // 记录note，下一帧执行判读
+  hitNote.value = userInput();
   ZSwitch.value = true;
 };
 
 const pressUp = (e) => {
   if (e.keyCode !== props.trackInfo.keyCode) return;
-  bg.value = props.trackInfo.bg;
   ZSwitch.value = false;
 };
 
