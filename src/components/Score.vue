@@ -38,7 +38,7 @@ const addScore = (judge) => {
       ex = Math.floor(base * 1.02);
       break;
   }
-  score.value += ex;
+  score.value = Math.floor(score.value + ex);
 };
 const add = (a, b) => a + b;
 const sum = (arr) => arr.reduce(add, 0);

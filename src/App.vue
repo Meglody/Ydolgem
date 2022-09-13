@@ -8,6 +8,9 @@ const scoreRef = ref(null);
 const addScore = (judgeResult) => {
   scoreRef.value.addScore(judgeResult);
 };
+onMounted(() => {
+  window.focus();
+});
 </script>
 
 <template>

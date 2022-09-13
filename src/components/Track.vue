@@ -9,6 +9,26 @@
       h10px
       bg-white
     ></div>
+    <div
+      absolute
+      v-if="topestRambling"
+      h2px
+      wfull
+      :style="{
+        top: `${topestRambling.endTop}px`,
+        background: 'radial-gradient(gold, yellow ,white, transparent)',
+      }"
+    ></div>
+    <div
+      absolute
+      h2px
+      wfull
+      bg-white
+      :style="{
+        top: `${trackHeight - 20}px`,
+        background: 'radial-gradient(black, transparent)',
+      }"
+    ></div>
   </div>
 </template>
 
@@ -61,17 +81,55 @@ const notes = ref([]);
 const triggeredNotesKey = ref([]);
 const topAdd = computed(() => {
   return notes.value.map((note) => {
-    return (trackHeight.value - note.initialTop) * note.speed;
+    const endPoint = note.type % 2 === 1 ? note.endTop : trackHeight.value;
+    return (endPoint - note.initialTop) * note.speed;
   });
 });
+const topestRambling = computed(() => {
+  let topest = null;
+  notes.value
+    .filter((note) => note.type % 2 === 1)
+    .forEach((note) => {
+      topest = topest === null ? note : topest.top > note.top ? topest : note;
+    });
+  return topest;
+});
 const hitNote = ref(null);
+const checkJudges = () => {
+  bg.value = props.trackInfo.bg;
+  // 执行判读
+  if (hitNote.value) {
+    const result = judgeByFrame(hitNote.value.frame);
+    logAndChangeBg(result);
+    emit('addScore', result);
+    hitNote.value = null;
+  }
+  // 是否miss
+  const outOfScreen = allNotes.filter((note) => {
+    const endPoint = note.type % 2 === 1 ? note.endTop : trackHeight.value;
+    return note.top >= endPoint && !triggeredNotesKey.value.includes(note.key);
+  });
+  misses.value = outOfScreen.length;
+  return outOfScreen;
+};
+
+const misses = ref(0);
+watch(misses, (nv, ov) => {
+  // miss数增加
+  if (nv) {
+    logAndChangeBg(0);
+    emit('addScore', 0);
+  }
+});
+
 const push = () => {
   const notesToPush = allNotes.filter((note) => {
     const timeLine =
       new Date().getTime() >=
       startTimeStamp + note.startTimeStamp + offset.value;
     const triggered = !triggeredNotesKey.value.includes(note.key);
-    const notOutOfScreen = note.top < trackHeight.value;
+    const endPoint = note.type % 2 === 1 ? note.endTop : trackHeight.value;
+    const notOutOfScreen = note.top < endPoint;
     // if (!notOutOfScreen) {
     //   console.log(note.key, calculateHitTime(note), new Date().getTime());
     // }
@@ -85,33 +143,6 @@ const move = () => {
     note.top = note.top + topAdd.value[index];
   });
 };
-const misses = ref(0);
-const checkJudges = () => {
-  bg.value = props.trackInfo.bg;
-  // 执行判读
-  if (hitNote.value) {
-    const result = judgeByFrame(hitNote.value.frame);
-    logAndChangeBg(result);
-    emit('addScore', result);
-    hitNote.value = null;
-  }
-  // 是否miss
-  const outOfScreen = allNotes.filter((note) => {
-    return (
-      note.top >= trackHeight.value &&
-      !triggeredNotesKey.value.includes(note.key)
-    );
-  });
-  misses.value = outOfScreen.length;
-  return outOfScreen;
-};
-watch(misses, (nv, ov) => {
-  // miss数增加
-  if (nv) {
-    logAndChangeBg(0);
-    emit('addScore', 0);
-  }
-});
 const ifEnd = () => {
   const time = new Date().getTime();
   if (time >= endTime) {
@@ -159,8 +190,10 @@ const ZSwitch = ref(false);
 const pressDown = (e) => {
   if (e.keyCode !== props.trackInfo.keyCode) return;
   // 记录note，下一帧执行判读
-  hitNote.value = userInput();
-  ZSwitch.value = true;
+  if (!ZSwitch.value) {
+    hitNote.value = userInput();
+    ZSwitch.value = true;
+  }
 };
 
 const pressUp = (e) => {

@@ -4,3 +4,10 @@ export enum DudgeLine {
   PERFECT,
   MASTER,
 }
+
+export enum NoteType {
+  NOTE,
+  NOTE_RAMBLING,
+  SLIDE,
+  SLIDE_RAMBLING,
+}
