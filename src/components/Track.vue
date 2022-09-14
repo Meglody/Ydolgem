@@ -3,7 +3,7 @@
     <div
       v-for="note in notes"
       :key="note.key"
-      :style="{ top: `${note.top}px` }"
+      :style="{ top: `${isSlider(note) ? note.top[0] : note.top}px` }"
       absolute
       wfull
       h10px
@@ -34,7 +34,13 @@
 
 <script setup lang="ts">
 import { colors } from '../utils/const';
-import { pipe, useRAF, judgeByFrame } from '../utils/common';
+import {
+  pipe,
+  useRAF,
+  judgeByFrame,
+  isSlider,
+  isRambling,
+} from '../utils/common';
 import { DudgeLine } from '../utils/enums';
 const offset = inject('offset');
 const duration = inject('duration');
@@ -75,22 +81,30 @@ const allNotes = props.trackInfo.notes.map((note) => ({
   ...note,
   triggered: false,
   judgeResult: '',
-  frame: 0,
+  top: note.initialTop,
+  frame: isSlider(note) ? [0, 0] : 0,
 }));
 const notes = ref([]);
 const triggeredNotesKey = ref([]);
 const topAdd = computed(() => {
   return notes.value.map((note) => {
-    const endPoint = note.type % 2 === 1 ? note.endTop : trackHeight.value;
-    return (endPoint - note.initialTop) * note.speed;
+    const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
+    const initialTop = isSlider(note) ? note.initialTop[0] : note.initialTop;
+    return (endPoint - initialTop) * note.speed;
   });
 });
 const topestRambling = computed(() => {
   let topest = null;
   notes.value
-    .filter((note) => note.type % 2 === 1)
+    .filter((note) => isRambling(note))
     .forEach((note) => {
-      topest = topest === null ? note : topest.top > note.top ? topest : note;
+      if (topest === null) {
+        topest = note;
+        return;
+      }
+      const topestTop = isSlider(topest) ? topest.top[1] : topest.top;
+      const noteTop = isSlider(note) ? note.top[1] : note.top;
+      return topestTop > noteTop ? topest : note;
     });
   return topest;
 });
@@ -99,6 +113,7 @@ const checkJudges = () => {
   bg.value = props.trackInfo.bg;
   // 执行判读
   if (hitNote.value) {
+    console.log(hitNote.value.frame);
     const result = judgeByFrame(hitNote.value.frame);
     logAndChangeBg(result);
     emit('addScore', result);
@@ -106,8 +121,23 @@ const checkJudges = () => {
   }
   // 是否miss
   const outOfScreen = allNotes.filter((note) => {
-    const endPoint = note.type % 2 === 1 ? note.endTop : trackHeight.value;
-    return note.top >= endPoint && !triggeredNotesKey.value.includes(note.key);
+    if (isSlider(note)) return false;
+    const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
+    const top = note.top;
+    return top >= endPoint && !triggeredNotesKey.value.includes(note.key);
+  });
+  const splitSliders = allNotes.filter(isSlider);
+  splitSliders.forEach((note) => {
+    const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
+    note.top.forEach((top, topIndex) => {
+      const newKey = `${note.key}-slider-${topIndex}`;
+      if (top >= endPoint && !triggeredNotesKey.value.includes(newKey)) {
+        outOfScreen.push({
+          ...note,
+          key: newKey,
+        });
+      }
+    });
   });
   misses.value = outOfScreen.length;
   return outOfScreen;
@@ -128,8 +158,10 @@ const push = () => {
       new Date().getTime() >=
       startTimeStamp + note.startTimeStamp + offset.value;
     const triggered = !triggeredNotesKey.value.includes(note.key);
-    const endPoint = note.type % 2 === 1 ? note.endTop : trackHeight.value;
-    const notOutOfScreen = note.top < endPoint;
+    const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
+    const notOutOfScreen = isSlider(note)
+      ? note.top[1] < endPoint
+      : note.top < endPoint;
     // if (!notOutOfScreen) {
     //   console.log(note.key, calculateHitTime(note), new Date().getTime());
     // }
@@ -139,8 +171,13 @@ const push = () => {
 };
 const move = () => {
   notes.value.forEach((note, index) => {
-    note.frame += note.speed;
-    note.top = note.top + topAdd.value[index];
+    if (isSlider(note)) {
+      note.frame = note.frame.map((f) => f + note.speed);
+      note.top = note.top.map((t) => t + topAdd.value[index]);
+    } else {
+      note.frame += note.speed;
+      note.top = note.top + topAdd.value[index];
+    }
   });
 };
 const ifEnd = () => {
@@ -155,10 +192,15 @@ const render = pipe(checkJudges, push, move, ifEnd);
 const userInput = () => {
   let topest = null;
   notes.value.forEach((note) => {
-    topest = topest === null ? note : topest.top > note.top ? topest : note;
+    if (topest === null) return note;
+    const topestTop = isSlider(topest) ? topest.top[1] : topest.top;
+    const noteTop = isSlider(note) ? note.top[1] : note.top;
+    return topestTop > noteTop ? topest : note;
   });
   if (topest) {
-    triggeredNotesKey.value.push(topest.key);
+    if (!isSlider(topest)) {
+      triggeredNotesKey.value.push(topest.key);
+    }
     return topest;
   } else {
     return null;
@@ -198,6 +240,21 @@ const pressDown = (e) => {
 
 const pressUp = (e) => {
   if (e.keyCode !== props.trackInfo.keyCode) return;
+  let topestSlider = null;
+  notes.value
+    .filter((note) => isSlider(note))
+    .forEach((note) => {
+      topestSlider =
+        topestSlider === null
+          ? note
+          : topestSlider.top[1] > note.top[1]
+          ? topestSlider
+          : note;
+    });
+  if (topestSlider) {
+    triggeredNotesKey.value.push(topestSlider.key);
+    hitNote.value = topestSlider;
+  }
   ZSwitch.value = false;
 };
 

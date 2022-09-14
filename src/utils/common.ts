@@ -55,3 +55,11 @@ export const judgeByTime = (keyDownTime: Date, noteTime: Date) => {
 export const judgeByFrame = (keyDownFrame: number) => {
   return pipe(judgeByFrameRule)((1 - keyDownFrame) * 100);
 };
+
+export const isRambling = (note: { type: number }) => {
+  return note.type % 2 === 1;
+};
+
+export const isSlider = (note: { type: number }) => {
+  return note.type >> 1;
+};
