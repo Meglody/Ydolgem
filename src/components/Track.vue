@@ -113,8 +113,15 @@ const checkJudges = () => {
   bg.value = props.trackInfo.bg;
   // 执行判读
   if (hitNote.value) {
-    console.log(hitNote.value.frame);
-    const result = judgeByFrame(hitNote.value.frame);
+    let result;
+    if (isSlider(hitNote.value)) {
+      console.log(ZSwitch.value);
+      result = judgeByFrame(
+        ZSwitch.value ? hitNote.value.frame[0] : hitNote.value.frame[1]
+      );
+    } else {
+      result = judgeByFrame(hitNote.value.frame);
+    }
     logAndChangeBg(result);
     emit('addScore', result);
     hitNote.value = null;
@@ -131,6 +138,7 @@ const checkJudges = () => {
     const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
     note.top.forEach((top, topIndex) => {
       const newKey = `${note.key}-slider-${topIndex}`;
+      // 这里可能不可以使用top值去判断了 @TODO
       if (top >= endPoint && !triggeredNotesKey.value.includes(newKey)) {
         outOfScreen.push({
           ...note,
@@ -172,8 +180,20 @@ const push = () => {
 const move = () => {
   notes.value.forEach((note, index) => {
     if (isSlider(note)) {
-      note.frame = note.frame.map((f) => f + note.speed);
-      note.top = note.top.map((t) => t + topAdd.value[index]);
+      note.frame = note.frame.map((f, fIndex) => {
+        if (fIndex === 0) {
+          // slider按下不再增加索引0的frame
+          return ZSwitch.value ? f : f + note.speed;
+        }
+        return f + note.speed;
+      });
+      note.top = note.top.map((t, tIndex) => {
+        if (tIndex === 0) {
+          // slider按下不再增加索引0的frame
+          return ZSwitch.value ? t : t + topAdd.value[index];
+        }
+        return t + topAdd.value[index];
+      });
     } else {
       note.frame += note.speed;
       note.top = note.top + topAdd.value[index];
@@ -192,9 +212,12 @@ const render = pipe(checkJudges, push, move, ifEnd);
 const userInput = () => {
   let topest = null;
   notes.value.forEach((note) => {
-    if (topest === null) return note;
-    const topestTop = isSlider(topest) ? topest.top[1] : topest.top;
-    const noteTop = isSlider(note) ? note.top[1] : note.top;
+    if (topest === null) {
+      topest = note;
+      return;
+    }
+    const topestTop = isSlider(topest) ? topest.top[0] : topest.top;
+    const noteTop = isSlider(note) ? note.top[0] : note.top;
     return topestTop > noteTop ? topest : note;
   });
   if (topest) {

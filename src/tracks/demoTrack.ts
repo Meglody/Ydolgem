@@ -24,7 +24,7 @@ export const tracks = [
       {
         type: NoteType.SLIDE,
         key: 9,
-        initialTop: [-5, -95],
+        initialTop: [-5, -500],
         startTimeStamp: 2333,
         speed: 2 / 100,
       },
