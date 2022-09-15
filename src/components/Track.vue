@@ -80,7 +80,7 @@ const props = withDefaults(
   }
 );
 const emit = defineEmits<{
-  (event: 'addScore', judgeResult: number);
+  (event: 'addScore', data: { judgeResult: number; isSlider: boolean });
 }>();
 const bg = ref(props.trackInfo.bg);
 const trackRef = ref(null);
@@ -149,7 +149,7 @@ const checkJudges = () => {
   if (hitNote.value) {
     let result;
     if (isSlider(hitNote.value)) {
-      console.log(ZSwitch.value);
+      // console.log(ZSwitch.value);
       result = judgeByFrame(
         ZSwitch.value ? hitNote.value.frame[0] : hitNote.value.frame[1]
       );
@@ -157,7 +157,10 @@ const checkJudges = () => {
       result = judgeByFrame(hitNote.value.frame);
     }
     logAndChangeBg(result);
-    emit('addScore', result);
+    emit('addScore', {
+      judgeResult: result,
+      isSlider: isSlider(hitNote.value),
+    });
     hitNote.value = null;
   }
   // 是否miss
@@ -188,7 +191,10 @@ watch(misses, (nv, ov) => {
   // miss数增加
   if (nv) {
     logAndChangeBg(0);
-    emit('addScore', 0);
+    emit('addScore', {
+      judgeResult: 0,
+      isSlider: false,
+    });
   }
 });
 
@@ -202,9 +208,6 @@ const push = () => {
     const notOutOfScreen = isSlider(note)
       ? note.frame[1] <= 1.18
       : note.frame <= 1.18;
-    // if (!notOutOfScreen) {
-    //   console.log(note.key, calculateHitTime(note), new Date().getTime());
-    // }
     return timeLine && triggered && notOutOfScreen;
   });
   notes.value = notesToPush;
@@ -222,7 +225,7 @@ const move = () => {
             return f + note.speed;
           }
         } else if (fIndex === 1) {
-          // console.log(note.sliding);
+          // slider没按和按下后,只要没有抬起.都继续增加索引1的frame
           if (note.sliding === undefined || note.sliding === true) {
             return f + note.speed;
           } else {
@@ -263,7 +266,7 @@ const userInput = () => {
     if (!isSlider(topest)) {
       triggeredNotesKey.value.push(topest.key);
     } else {
-      console.log(topest.frame);
+      // console.log(topest.frame);
     }
     return topest;
   } else {
@@ -315,10 +318,10 @@ const pressUp = (e) => {
           ? topestSlider
           : note;
     });
-  console.log(topestSlider);
+  // console.log(topestSlider);
   if (topestSlider) {
     topestSlider.sliding = false;
-    console.log(topestSlider.frame);
+    // console.log(topestSlider.frame);
     triggeredNotesKey.value.push(topestSlider.key);
     hitNote.value = topestSlider;
   }

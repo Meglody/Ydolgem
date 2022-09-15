@@ -20,11 +20,17 @@ const props = withDefaults(
 const each = computed(() =>
   sum(props.tracks.map((track) => track.notes.length))
 );
-const addScore = (judge) => {
+const addScore = ({
+  judgeResult,
+  isSlider,
+}: {
+  judgeResult: number;
+  isSlider: number;
+}) => {
   const base = 1000000000 / each.value;
   const { MISS, GOOD, PERFECT, MASTER } = DudgeLine;
   let ex = 0;
-  switch (judge) {
+  switch (judgeResult) {
     case MISS:
       ex = 0;
       break;
@@ -38,7 +44,7 @@ const addScore = (judge) => {
       ex = Math.floor(base * 1.02);
       break;
   }
-  score.value = Math.floor(score.value + ex);
+  score.value = Math.floor(score.value + (ex >> isSlider));
 };
 const add = (a, b) => a + b;
 const sum = (arr) => arr.reduce(add, 0);
