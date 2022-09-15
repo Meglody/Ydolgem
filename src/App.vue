@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { tracks } from './tracks/demoTrack';
 const offset = ref(333);
-const duration = ref(4000);
+const duration = ref(5500);
 provide('offset', offset);
 provide('duration', duration);
 const scoreRef = ref(null);
