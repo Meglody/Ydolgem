@@ -1,14 +1,33 @@
 <template>
   <div ref="trackRef" hfull wfull relative :style="{ backgroundColor: bg }">
-    <div
-      v-for="note in notes"
-      :key="note.key"
-      :style="{ top: `${isSlider(note) ? note.top[0] : note.top}px` }"
-      absolute
-      wfull
-      h10px
-      bg-white
-    ></div>
+    <div v-for="note in notes" :key="note.key" wfull relative>
+      <div
+        :style="{ top: `${isSlider(note) ? note.top[0] : note.top}px` }"
+        absolute
+        wfull
+        h10px
+        bg-white
+      ></div>
+      <div
+        v-if="isSlider(note)"
+        :style="{
+          top: `${note.top[1] + 5}px`,
+          width: '80%',
+          margin: '0px 10%',
+          height: `${note.top[0] - note.top[1] - 10}px`,
+        }"
+        absolute
+        bg-white
+      ></div>
+      <div
+        v-if="isSlider(note)"
+        :style="{ top: `${note.top[1]}px` }"
+        absolute
+        wfull
+        h10px
+        bg-white
+      ></div>
+    </div>
     <div
       absolute
       v-if="topestRambling"
@@ -77,13 +96,7 @@ const {
 } = useElementBounding(trackRef);
 const endTime = new Date().getTime() + offset.value + duration.value;
 const startTimeStamp = new Date().getTime();
-const allNotes = props.trackInfo.notes.map((note) => ({
-  ...note,
-  triggered: false,
-  judgeResult: '',
-  top: note.initialTop,
-  frame: isSlider(note) ? [0, 0] : 0,
-}));
+
 const notes = ref([]);
 const triggeredNotesKey = ref([]);
 const topAdd = computed(() => {
@@ -91,6 +104,27 @@ const topAdd = computed(() => {
     const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
     const initialTop = isSlider(note) ? note.initialTop[0] : note.initialTop;
     return (endPoint - initialTop) * note.speed;
+  });
+});
+const allNotes = computed(() => {
+  return props.trackInfo.notes.map((note) => {
+    const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
+    const frame = isSlider(note)
+      ? [
+          0,
+          ((note.initialTop[1] - note.initialTop[0]) /
+            ((endPoint - note.initialTop[0]) * note.speed)) *
+            note.speed,
+        ]
+      : 0;
+    const res = {
+      ...note,
+      triggered: false,
+      judgeResult: '',
+      top: note.initialTop,
+      frame,
+    };
+    return res;
   });
 });
 const topestRambling = computed(() => {
@@ -102,8 +136,8 @@ const topestRambling = computed(() => {
         topest = note;
         return;
       }
-      const topestTop = isSlider(topest) ? topest.top[1] : topest.top;
-      const noteTop = isSlider(note) ? note.top[1] : note.top;
+      const topestTop = isSlider(topest) ? topest.frame[1] : topest.frame;
+      const noteTop = isSlider(note) ? note.frame[1] : note.frame;
       return topestTop > noteTop ? topest : note;
     });
   return topest;
@@ -127,19 +161,17 @@ const checkJudges = () => {
     hitNote.value = null;
   }
   // 是否miss
-  const outOfScreen = allNotes.filter((note) => {
+  const outOfScreen = allNotes.value.filter((note) => {
     if (isSlider(note)) return false;
-    const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
-    const top = note.top;
-    return top >= endPoint && !triggeredNotesKey.value.includes(note.key);
+    return note.frame > 1.18 && !triggeredNotesKey.value.includes(note.key);
   });
-  const splitSliders = allNotes.filter(isSlider);
+  const splitSliders = notes.value.filter(isSlider);
   splitSliders.forEach((note) => {
-    const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
-    note.top.forEach((top, topIndex) => {
-      const newKey = `${note.key}-slider-${topIndex}`;
-      // 这里可能不可以使用top值去判断了 @TODO
-      if (top >= endPoint && !triggeredNotesKey.value.includes(newKey)) {
+    note.frame.forEach((frame, fIndex) => {
+      const newKey = `${note.key}-slider-${fIndex}`;
+      const missSliderJudge = frame > 1.18;
+      // console.log(missSliderJudge);
+      if (missSliderJudge && !triggeredNotesKey.value.includes(newKey)) {
         outOfScreen.push({
           ...note,
           key: newKey,
@@ -161,15 +193,15 @@ watch(misses, (nv, ov) => {
 });
 
 const push = () => {
-  const notesToPush = allNotes.filter((note) => {
+  const notesToPush = allNotes.value.filter((note) => {
     const timeLine =
       new Date().getTime() >=
       startTimeStamp + note.startTimeStamp + offset.value;
     const triggered = !triggeredNotesKey.value.includes(note.key);
     const endPoint = isRambling(note) ? note.endTop : trackHeight.value;
     const notOutOfScreen = isSlider(note)
-      ? note.top[1] < endPoint
-      : note.top < endPoint;
+      ? note.frame[1] <= 1.18
+      : note.frame <= 1.18;
     // if (!notOutOfScreen) {
     //   console.log(note.key, calculateHitTime(note), new Date().getTime());
     // }
@@ -183,17 +215,24 @@ const move = () => {
       note.frame = note.frame.map((f, fIndex) => {
         if (fIndex === 0) {
           // slider按下不再增加索引0的frame
-          return ZSwitch.value ? f : f + note.speed;
+          if (ZSwitch.value) {
+            note.sliding = true;
+            return f;
+          } else {
+            return f + note.speed;
+          }
+        } else if (fIndex === 1) {
+          // console.log(note.sliding);
+          if (note.sliding === undefined || note.sliding === true) {
+            return f + note.speed;
+          } else {
+            delete note.sliding;
+            return f;
+          }
         }
-        return f + note.speed;
       });
-      note.top = note.top.map((t, tIndex) => {
-        if (tIndex === 0) {
-          // slider按下不再增加索引0的frame
-          return ZSwitch.value ? t : t + topAdd.value[index];
-        }
-        return t + topAdd.value[index];
-      });
+      // console.log(toRaw(note.frame));
+      note.top = note.top.map((t) => t + topAdd.value[index]);
     } else {
       note.frame += note.speed;
       note.top = note.top + topAdd.value[index];
@@ -216,13 +255,15 @@ const userInput = () => {
       topest = note;
       return;
     }
-    const topestTop = isSlider(topest) ? topest.top[0] : topest.top;
-    const noteTop = isSlider(note) ? note.top[0] : note.top;
+    const topestTop = isSlider(topest) ? topest.frame[0] : topest.frame;
+    const noteTop = isSlider(note) ? note.frame[0] : note.frame;
     return topestTop > noteTop ? topest : note;
   });
   if (topest) {
     if (!isSlider(topest)) {
       triggeredNotesKey.value.push(topest.key);
+    } else {
+      console.log(topest.frame);
     }
     return topest;
   } else {
@@ -270,11 +311,14 @@ const pressUp = (e) => {
       topestSlider =
         topestSlider === null
           ? note
-          : topestSlider.top[1] > note.top[1]
+          : topestSlider.frame[1] > note.frame[1]
           ? topestSlider
           : note;
     });
+  console.log(topestSlider);
   if (topestSlider) {
+    topestSlider.sliding = false;
+    console.log(topestSlider.frame);
     triggeredNotesKey.value.push(topestSlider.key);
     hitNote.value = topestSlider;
   }

@@ -53,7 +53,7 @@ export const judgeByTime = (keyDownTime: Date, noteTime: Date) => {
 };
 
 export const judgeByFrame = (keyDownFrame: number) => {
-  return pipe(judgeByFrameRule)((1 - keyDownFrame) * 100);
+  return pipe(judgeByFrameRule)(Math.abs(1 - keyDownFrame) * 100);
 };
 
 export const isRambling = (note: { type: number }) => {
