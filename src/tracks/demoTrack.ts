@@ -38,35 +38,35 @@ export const tracks = [
       },
     ],
   },
-  {
-    bg: bgColor,
-    // x
-    keyCode: 88,
-    notes: [
-      {
-        type: NoteType.NOTE,
-        key: 3,
-        initialTop: -5,
-        startTimeStamp: 666,
-        speed: 2 / 100,
-      },
-      {
-        type: NoteType.NOTE,
-        key: 4,
-        initialTop: -5,
-        startTimeStamp: 1502,
-        speed: 2 / 100,
-      },
-      {
-        type: NoteType.SLIDE_RAMBLING,
-        key: 11,
-        initialTop: [300, 500],
-        endTop: 20,
-        startTimeStamp: 2100,
-        speed: 2 / 100,
-      },
-    ],
-  },
+  // {
+  //   bg: bgColor,
+  //   // x
+  //   keyCode: 88,
+  //   notes: [
+  //     {
+  //       type: NoteType.NOTE,
+  //       key: 3,
+  //       initialTop: -5,
+  //       startTimeStamp: 666,
+  //       speed: 2 / 100,
+  //     },
+  //     {
+  //       type: NoteType.NOTE,
+  //       key: 4,
+  //       initialTop: -5,
+  //       startTimeStamp: 1502,
+  //       speed: 2 / 100,
+  //     },
+  //     {
+  //       type: NoteType.SLIDE_RAMBLING,
+  //       key: 11,
+  //       initialTop: [300, 500],
+  //       endTop: 20,
+  //       startTimeStamp: 2100,
+  //       speed: 2 / 100,
+  //     },
+  //   ],
+  // },
   // {
   //   bg: bgColor,
   //   // n

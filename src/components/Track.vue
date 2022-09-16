@@ -1,5 +1,11 @@
 <template>
-  <div ref="trackRef" hfull wfull relative :style="{ backgroundColor: bg }">
+  <div
+    ref="trackRef"
+    hfull
+    wfull
+    relative
+    :style="{ backgroundColor: bgColor }"
+  >
     <div v-for="note in notes" :key="note.key" wfull relative>
       <div
         :style="{ top: `${isSlider(note) ? note.top[0] : note.top}px` }"
@@ -35,7 +41,7 @@
       wfull
       :style="{
         top: `${topestRambling.endTop}px`,
-        background: 'radial-gradient(gold, yellow ,white, transparent)',
+        background: `radial-gradient(gold, yellow, white, transparent)`,
       }"
     ></div>
     <div
@@ -45,20 +51,23 @@
       bg-white
       :style="{
         top: `${trackHeight - 20}px`,
-        background: 'radial-gradient(black, transparent)',
+        transition: 'box-shadow .1s ease',
+        background: `radial-gradient(black, transparent)`,
+        boxShadow: `${bg} 0px 0px 20px`,
       }"
     ></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { colors } from '../utils/const';
+import { colors, bgColor } from '../utils/const';
 import {
   pipe,
   useRAF,
   judgeByFrame,
   isSlider,
   isRambling,
+  inDefaultBg,
 } from '../utils/common';
 import { DudgeLine } from '../utils/enums';
 const offset = inject('offset');
@@ -147,7 +156,6 @@ const checkJudges = () => {
   bg.value = props.trackInfo.bg;
   // 执行判读
   if (hitNote.value) {
-    console.log(isSlider(hitNote.value));
     let result;
     if (isSlider(hitNote.value)) {
       result = judgeByFrame(
@@ -271,8 +279,6 @@ const userInput = () => {
   if (topest) {
     if (!isSlider(topest)) {
       triggeredNotesKey.value.push(topest.key);
-    } else {
-      console.log(topest.frame);
     }
     return topest;
   } else {
@@ -325,7 +331,6 @@ const pressUp = (e) => {
     const noteTop = isSlider(note) ? note.frame[1] : note.frame;
     topest = topestTop > noteTop ? topest : note;
   });
-  console.log(notes);
   if (topest && isSlider(topest) && topest.slidering === true) {
     topest.slidering = false;
     triggeredNotesKey.value.push(topest.key);

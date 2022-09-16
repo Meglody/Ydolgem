@@ -1,4 +1,5 @@
 import { DudgeLine } from './enums';
+import { bgColor } from './const';
 /**
  * @description: 高频调用同一个js函数操作dom，造成回流重绘的性能瓶颈时使用
  * @param {() => Boolean} reflowFn
@@ -62,4 +63,8 @@ export const isRambling = (note: { type: number }) => {
 
 export const isSlider = (note: { type: number }) => {
   return note.type >> 1;
+};
+
+export const inDefaultBg = (color: string) => {
+  return color === bgColor;
 };
