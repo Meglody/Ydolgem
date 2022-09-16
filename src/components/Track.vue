@@ -147,6 +147,7 @@ const checkJudges = () => {
   bg.value = props.trackInfo.bg;
   // 执行判读
   if (hitNote.value) {
+    console.log(isSlider(hitNote.value));
     let result;
     if (isSlider(hitNote.value)) {
       result = judgeByFrame(
@@ -267,7 +268,6 @@ const userInput = () => {
     const noteTop = isSlider(note) ? note.frame[0] : note.frame;
     return topestTop > noteTop ? topest : note;
   });
-  console.log(topest.key);
   if (topest) {
     if (!isSlider(topest)) {
       triggeredNotesKey.value.push(topest.key);
@@ -307,30 +307,29 @@ const pressDown = (e) => {
   // 记录note，下一帧执行判读
   if (!ZSwitch.value) {
     hitNote.value = userInput();
-    hitNote.value.slidering = true;
+    if (isSlider(hitNote.value)) {
+      hitNote.value.slidering = true;
+    }
     ZSwitch.value = true;
   }
 };
 
 const pressUp = (e) => {
   if (e.keyCode !== props.trackInfo.keyCode) return;
-  let topestSlider = null;
-  notes.value
-    .filter((note) => isSlider(note))
-    .forEach((note) => {
-      topestSlider =
-        topestSlider === null
-          ? note
-          : topestSlider.frame[1] > note.frame[1]
-          ? topestSlider
-          : note;
-    });
-  // console.log(topestSlider);
-  if (topestSlider) {
-    topestSlider.slidering = false;
-    // console.log(topestSlider.frame);
-    triggeredNotesKey.value.push(topestSlider.key);
-    hitNote.value = topestSlider;
+  let topest = null;
+  notes.value.forEach((note) => {
+    if (topest === null) {
+      topest = note;
+    }
+    const topestTop = isSlider(topest) ? topest.frame[1] : topest.frame;
+    const noteTop = isSlider(note) ? note.frame[1] : note.frame;
+    topest = topestTop > noteTop ? topest : note;
+  });
+  console.log(notes);
+  if (topest && isSlider(topest) && topest.slidering === true) {
+    topest.slidering = false;
+    triggeredNotesKey.value.push(topest.key);
+    hitNote.value = topest;
   }
   ZSwitch.value = false;
 };
