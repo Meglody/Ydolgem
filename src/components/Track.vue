@@ -11,10 +11,10 @@
       <div
         v-if="isSlider(note)"
         :style="{
-          top: `${note.top[1] + 5}px`,
+          top: `${Math.min(note.top[1], note.top[0]) + 5}px`,
           width: '80%',
           margin: '0px 10%',
-          height: `${note.top[0] - note.top[1] - 10}px`,
+          height: `${Math.abs(note.top[0] - note.top[1]) - 10}px`,
         }"
         absolute
         bg-white
@@ -112,11 +112,11 @@ const allNotes = computed(() => {
     const frame = isSlider(note)
       ? [
           0,
-          ((note.initialTop[1] - note.initialTop[0]) /
-            ((endPoint - note.initialTop[0]) * note.speed)) *
-            note.speed,
+          (note.initialTop[1] - note.initialTop[0]) /
+            (endPoint - note.initialTop[0]),
         ]
       : 0;
+    console.log(frame, endPoint);
     const res = {
       ...note,
       triggered: false,
@@ -149,9 +149,10 @@ const checkJudges = () => {
   if (hitNote.value) {
     let result;
     if (isSlider(hitNote.value)) {
-      // console.log(ZSwitch.value);
       result = judgeByFrame(
-        ZSwitch.value ? hitNote.value.frame[0] : hitNote.value.frame[1]
+        hitNote.value.slidering
+          ? hitNote.value.frame[0]
+          : hitNote.value.frame[1]
       );
     } else {
       result = judgeByFrame(hitNote.value.frame);
@@ -163,24 +164,28 @@ const checkJudges = () => {
     });
     hitNote.value = null;
   }
+  let outOfScreen = [];
   // 是否miss
-  const outOfScreen = allNotes.value.filter((note) => {
-    if (isSlider(note)) return false;
-    return note.frame > 1.18 && !triggeredNotesKey.value.includes(note.key);
-  });
-  const splitSliders = notes.value.filter(isSlider);
-  splitSliders.forEach((note) => {
-    note.frame.forEach((frame, fIndex) => {
-      const newKey = `${note.key}-slider-${fIndex}`;
-      const missSliderJudge = frame > 1.18;
-      // console.log(missSliderJudge);
-      if (missSliderJudge && !triggeredNotesKey.value.includes(newKey)) {
-        outOfScreen.push({
-          ...note,
-          key: newKey,
-        });
+  allNotes.value.forEach((note) => {
+    if (!isSlider(note)) {
+      if (note.frame > 1.18 && !triggeredNotesKey.value.includes(note.key)) {
+        outOfScreen.push(note);
       }
-    });
+    } else {
+      note.frame.forEach((frame, fIndex) => {
+        const newKey = `${note.key}-slider-${fIndex}`;
+        const missSliderJudge = frame > 1.18;
+        if (
+          missSliderJudge &&
+          !outOfScreen.map((note) => note.key).includes(newKey)
+        ) {
+          outOfScreen.push({
+            ...note,
+            key: newKey,
+          });
+        }
+      });
+    }
   });
   misses.value = outOfScreen.length;
   return outOfScreen;
@@ -218,22 +223,22 @@ const move = () => {
       note.frame = note.frame.map((f, fIndex) => {
         if (fIndex === 0) {
           // slider按下不再增加索引0的frame
-          if (ZSwitch.value) {
-            note.sliding = true;
+          if (note.slidering === true) {
             return f;
           } else {
             return f + note.speed;
           }
         } else if (fIndex === 1) {
           // slider没按和按下后,只要没有抬起.都继续增加索引1的frame
-          if (note.sliding === undefined || note.sliding === true) {
+          if (note.slidering === undefined || note.slidering === true) {
             return f + note.speed;
           } else {
-            delete note.sliding;
+            delete note.slidering;
             return f;
           }
         }
       });
+      // console.log(note.frame, note.key);
       // console.log(toRaw(note.frame));
       note.top = note.top.map((t) => t + topAdd.value[index]);
     } else {
@@ -262,11 +267,12 @@ const userInput = () => {
     const noteTop = isSlider(note) ? note.frame[0] : note.frame;
     return topestTop > noteTop ? topest : note;
   });
+  console.log(topest.key);
   if (topest) {
     if (!isSlider(topest)) {
       triggeredNotesKey.value.push(topest.key);
     } else {
-      // console.log(topest.frame);
+      console.log(topest.frame);
     }
     return topest;
   } else {
@@ -301,6 +307,7 @@ const pressDown = (e) => {
   // 记录note，下一帧执行判读
   if (!ZSwitch.value) {
     hitNote.value = userInput();
+    hitNote.value.slidering = true;
     ZSwitch.value = true;
   }
 };
@@ -320,7 +327,7 @@ const pressUp = (e) => {
     });
   // console.log(topestSlider);
   if (topestSlider) {
-    topestSlider.sliding = false;
+    topestSlider.slidering = false;
     // console.log(topestSlider.frame);
     triggeredNotesKey.value.push(topestSlider.key);
     hitNote.value = topestSlider;
